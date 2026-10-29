@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pizza Menu</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20251f;
+      --muted: #687168;
+      --line: #d9dfd7;
+      --paper: #f7f8f3;
+      --green: #245b43;
+      --green-soft: #e5eee6;
+      --red: #a53c2f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.5 Georgia, "Times New Roman", serif;
+    }
+    main { width: min(1040px, calc(100% - 32px)); margin: 48px auto; }
+    header { border-bottom: 2px solid var(--ink); padding-bottom: 20px; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 500; }
+    header p, .hint { color: var(--muted); margin: 8px 0 0; }
+    h2 { margin: 0 0 16px; font-size: 1.35rem; font-weight: 500; }
+    section { padding: 28px 0; border-bottom: 1px solid var(--line); }
+    form { display: grid; gap: 12px; }
+    .new-item { grid-template-columns: 1.1fr 2fr 140px auto; align-items: end; }
+    label { display: grid; gap: 5px; color: var(--muted); font: 600 .78rem/1.3 system-ui, sans-serif; }
+    input, textarea {
+      width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 3px;
+      background: #fff; color: var(--ink); padding: 10px 11px; font: 1rem system-ui, sans-serif;
+    }
+    textarea { min-height: 42px; resize: vertical; }
+    button {
+      min-height: 42px; padding: 9px 14px; border: 1px solid var(--green); border-radius: 3px;
+      background: var(--green); color: #fff; cursor: pointer; font: 600 .9rem system-ui, sans-serif;
+    }
+    button:hover { background: #194832; }
+    button:disabled, input:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+    .items { display: grid; }
+    .item { display: grid; grid-template-columns: 1.1fr 2fr 140px auto; gap: 12px; align-items: end; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .item-actions { display: flex; gap: 8px; }
+    .delete { background: transparent; border-color: var(--red); color: var(--red); }
+    .delete:hover { background: #f5e7e3; }
+    .flash, .database-error { margin: 18px 0 0; padding: 12px 14px; border-left: 3px solid var(--green); background: var(--green-soft); }
+    .database-error { border-color: var(--red); background: #f5e7e3; }
+    .empty { color: var(--muted); padding: 16px 0; }
+    @media (max-width: 720px) {
+      main { margin: 28px auto; }
+      .new-item, .item { grid-template-columns: 1fr 1fr; }
+      .new-item label:nth-child(2), .item label:nth-child(2) { grid-column: 1 / -1; }
+      .item-actions { grid-column: 1 / -1; }
+    }
+    @media (max-width: 420px) {
+      .new-item, .item { grid-template-columns: 1fr; }
+      .new-item label:nth-child(2), .item label:nth-child(2), .item-actions { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Pizza Menu</h1>
+      <p>Manage menu items and prices</p>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <p class="flash" role="status">{{ message }}</p>
+      {% endfor %}
+    {% endwith %}
+
+    {% if database_error %}
+      <p class="database-error" role="alert">Unable to connect to PostgreSQL. Check that the server is running and that the POSTGRES_* settings in .env are correct.</p>
+    {% endif %}
+
+    <section>
+      <h2>Add an item</h2>
+      <form class="new-item" action="{{ url_for('create_item') }}" method="post">
+        <label>Name
+          <input name="name" maxlength="120" required {% if database_error %}disabled{% endif %}>
+        </label>
+        <label>Description
+          <input name="description" {% if database_error %}disabled{% endif %}>
+        </label>
+        <label>Price (PLN)
+          <input name="price" type="number" min="0" step="0.01" required {% if database_error %}disabled{% endif %}>
+        </label>
+        <button type="submit" {% if database_error %}disabled{% endif %}>Add item</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Menu items</h2>
+      {% if items %}
+        <div class="items">
+          {% for item in items %}
+            <div class="item">
+              <form id="update-{{ item[0] }}" action="{{ url_for('update_item', item_id=item[0]) }}" method="post"></form>
+              <label>Name
+                <input form="update-{{ item[0] }}" name="name" value="{{ item[1] }}" maxlength="120" required>
+              </label>
+              <label>Description
+                <input form="update-{{ item[0] }}" name="description" value="{{ item[2] }}">
+              </label>
+              <label>Price (PLN)
+                <input form="update-{{ item[0] }}" name="price" type="number" min="0" step="0.01" value="{{ item[3] }}" required>
+              </label>
+              <div class="item-actions">
+                <button form="update-{{ item[0] }}" type="submit">Save</button>
+                <form action="{{ url_for('delete_item', item_id=item[0]) }}" method="post">
+                  <button class="delete" type="submit">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% elif not database_error %}
+        <p class="empty">No menu items yet. Add the first item above.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
