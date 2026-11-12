@@ -14,14 +14,18 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", "local-development-key")
 
 @contextmanager
 def database_cursor():
-    connection = psycopg.connect(
-        dbname=os.environ.get("POSTGRES_DB", "pizzeriadb"),
-        user=os.environ.get("POSTGRES_USER", "postgres"),
-        password=os.environ.get("POSTGRES_PASSWORD", ""),
-        host=os.environ.get("POSTGRES_HOST", "localhost"),
-        port=os.environ.get("POSTGRES_PORT", "5432"),
-        connect_timeout=5,
-    )
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        connection = psycopg.connect(database_url, connect_timeout=5)
+    else:
+        connection = psycopg.connect(
+            dbname=os.environ.get("POSTGRES_DB", "pizzeriadb"),
+            user=os.environ.get("POSTGRES_USER", "postgres"),
+            password=os.environ.get("POSTGRES_PASSWORD", ""),
+            host=os.environ.get("POSTGRES_HOST", "localhost"),
+            port=os.environ.get("POSTGRES_PORT", "5432"),
+            connect_timeout=5,
+        )
     try:
         with connection:
             with connection.cursor() as cursor:
